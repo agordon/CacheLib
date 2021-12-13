@@ -137,11 +137,12 @@ test -n "$skip_build" \
   || pass_params="$pass_params -i"
 
 
-# Nothing detected so far
-DETECTED=
-detect_os
 
 if test -z "$skip_os_pkgs" ; then
+  # Nothing detected so far
+  DETECTED=
+  detect_os
+
   case "$DETECTED" in
     debian10|debian11) build_debian_10 ;;
     ubuntu18.04|ubuntu20.04|ubuntu21.04) build_ubuntu_18 ;;
