@@ -1087,7 +1087,7 @@ class CacheAllocator : public CacheBase {
   static bool cleanupStrayShmSegments(const std::string& cacheDir, bool posix);
 
   // gives a relative offset to a pointer within the cache.
-  uint64_t getItemPtrAsOffset(const void* ptr);
+  /*uint64_t*/ uintptr_t getItemPtrAsOffset(const void* ptr);
 
   // this ensures that we dont introduce any more hidden fields like vtable by
   // inheriting from the Hooks and their bool interface.

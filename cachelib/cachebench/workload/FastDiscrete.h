@@ -160,7 +160,7 @@ class FastDiscreteDistribution final : public Distribution {
   const size_t rightOffset_{};
   double scalingFactor_{};
   double bucketWeight_{};
-  std::uniform_int_distribution<size_t> bucketDistribution_{};
+  std::uniform_int_distribution<uint64_t> bucketDistribution_{};
   std::vector<std::uniform_int_distribution<size_t>>
       insideBucketDistributions_{};
 };

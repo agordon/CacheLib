@@ -288,6 +288,14 @@ folly::File openCacheFile(const std::string& fileName,
   // o_direct in those cases.
   folly::File f;
   try {
+
+// Ugly Mac OS Hack
+#if 1
+#ifndef O_DIRECT
+#define O_DIRECT 0
+#endif
+#endif
+
     f = folly::File(fileName.c_str(), flags | O_DIRECT);
   } catch (const std::system_error& e) {
     if (e.code().value() == EINVAL) {
@@ -298,6 +306,10 @@ folly::File openCacheFile(const std::string& fileName,
   }
   XDCHECK_GE(f.fd(), 0);
 
+// Ugly Mac OS Hack - posix_fadvise(2) and fallocate(2) are not available
+// despite being available on FreeBSD.
+// Consider replacing fallocate with posix_fallocate(2) which might exist on MacOS
+#if 0
   // TODO: T95780876 detect if file exists and is of expected size. If not,
   // automatically fallocate the file or ftruncate the file.
   if (truncate && ::fallocate(f.fd(), 0, 0, size) < 0) {
@@ -311,6 +323,7 @@ folly::File openCacheFile(const std::string& fileName,
     throw std::system_error(errno, std::system_category(),
                             "Error fadvising cache file");
   }
+#endif
 
   return f;
 }

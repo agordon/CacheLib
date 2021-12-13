@@ -14,7 +14,7 @@ find_library(GLOG_LIBRARY glog
 find_path(GLOG_INCLUDE_DIR glog/logging.h
   PATHS ${GLOG_INCLUDEDIR})
 
-find_package_handle_standard_args(glog DEFAULT_MSG
+find_package_handle_standard_args(Glog DEFAULT_MSG
   GLOG_LIBRARY
   GLOG_INCLUDE_DIR)
 

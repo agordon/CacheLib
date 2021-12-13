@@ -25,6 +25,19 @@
 #include <folly/Range.h>
 #pragma GCC diagnostic pop
 
+/* Ugly hack for Mac OS / FreeBSD */
+#if 1
+#define MAP_HUGE_SHIFT 0
+#define MAP_LOCKED 0
+#define MAP_HUGETLB 0
+
+#define SHM_HUGE_2MB 0
+#define SHM_HUGETLB 0
+#define SHM_LOCK 0
+#define SHM_REMAP 0
+#endif
+
+
 namespace facebook {
 namespace cachelib {
 

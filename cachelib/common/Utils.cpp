@@ -205,7 +205,13 @@ size_t getNumResidentPages(const void* memory, size_t len) {
 
   // TODO this could be a large allocation. may be break it up if it matters.
   std::vector<unsigned char> vec(numPages, 0);
+#if 0
+  // Linux syscall
   const int rv = mincore(const_cast<void*>(memory), len, vec.data());
+#else
+  // FreeBSD syscall, needs explicit typecast to (char*)
+  const int rv = mincore(const_cast<void*>(memory), len, (char*)vec.data());
+#endif
   if (rv != 0) {
     throw std::system_error(
         errno, std::system_category(),
@@ -420,10 +426,15 @@ size_t getMemAvailable() {
 }
 
 void printExceptionStackTraces() {
+#if 0
+  // On Linux, folly can be built with stack tracing support
   auto exceptions = folly::exception_tracer::getCurrentExceptions();
   for (auto& exc : exceptions) {
     std::cerr << exc << std::endl;
   }
+#else
+  std::cerr << "WARNING: Stack-tracing not available" << std::endl;
+#endif
 }
 
 } // namespace util

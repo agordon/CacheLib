@@ -29,6 +29,9 @@
 
 #include "cachelib/common/Utils.h"
 
+#define MADV_REMOVE 0
+#define MADV_DONTDUMP 0
+
 using namespace facebook::cachelib;
 
 namespace {

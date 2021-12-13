@@ -39,7 +39,7 @@ set(ZLIB_FOUND TRUE)
 mark_as_advanced(ZLIB_INCLUDE_DIRS ZLIB_LIBRARIES)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(Zstd ZLIB_INCLUDE_DIRS ZLIB_LIBRARIES)
+find_package_handle_standard_args(ZLIB ZLIB_INCLUDE_DIRS ZLIB_LIBRARIES)
 
 if(ZLIB_FOUND AND NOT ZLIB_FIND_QUIETLY)
     message(STATUS "ZLIB: ${ZLIB_INCLUDE_DIRS}")

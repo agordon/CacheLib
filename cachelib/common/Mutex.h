@@ -29,6 +29,16 @@
 
 #include "cachelib/common/Hash.h"
 
+// Ugly Mac OS Hack
+// From: https://raw.githubusercontent.com/majek/dump/master/msqueue/pthread_spin_lock_shim.hendif
+#include "pthread_spinlock_shim.h"
+#ifndef PTHREAD_MUTEX_TIMED_NP
+#define PTHREAD_MUTEX_TIMED_NP 0
+#endif
+#ifndef PTHREAD_MUTEX_ADAPTIVE_NP
+#define PTHREAD_MUTEX_ADAPTIVE_NP 0
+#endif
+
 namespace facebook {
 namespace cachelib {
 

@@ -36,13 +36,13 @@ add_dependencies(cachelib_common thrift_generated_files)
 
 target_link_libraries(cachelib_common PUBLIC
   Threads::Threads
-  FBThrift::thriftcpp2
-  FBThrift::thriftprotocol
   Folly::folly
   Folly::follybenchmark
   #Folly::folly_exception_tracer
   #Folly::folly_exception_tracer_base
   #Folly::folly_exception_counter
+  FBThrift::thriftcpp2
+  FBThrift::thriftprotocol
 )
 
 install(TARGETS cachelib_common
