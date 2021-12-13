@@ -18,15 +18,20 @@
 
 #include <folly/logging/xlog.h>
 
+#include "cachelib/navy/common/Hash.h"
+
 namespace facebook {
 namespace cachelib {
 namespace navy {
-HitsReinsertionPolicy::HitsReinsertionPolicy(uint8_t hitsThreshold)
-    : hitsThreshold_{hitsThreshold} {}
+HitsReinsertionPolicy::HitsReinsertionPolicy(uint8_t hitsThreshold,
+                                             const Index& index)
+    : hitsThreshold_{hitsThreshold}, index_(index) {}
 
-bool HitsReinsertionPolicy::shouldReinsert(HashedKey hk) {
-  XDCHECK(index_);
-  const auto lr = index_->peek(hk.keyHash());
+bool HitsReinsertionPolicy::shouldReinsert(folly::StringPiece key) {
+  const auto lr = index_.peek(
+      makeHK(
+          BufferView{key.size(), reinterpret_cast<const uint8_t*>(key.data())})
+          .keyHash());
   if (!lr.found() || lr.currentHits() < hitsThreshold_) {
     return false;
   }
@@ -35,19 +40,10 @@ bool HitsReinsertionPolicy::shouldReinsert(HashedKey hk) {
   return true;
 }
 
-void HitsReinsertionPolicy::getCounters(const CounterVisitor& visitor) const {
+void HitsReinsertionPolicy::getCounters(
+    const util::CounterVisitor& visitor) const {
   hitsOnReinsertionEstimator_.visitQuantileEstimator(
       visitor, "navy_bc_item_reinsertion_hits");
-}
-
-HitsReinsertionPolicy::AccessStats HitsReinsertionPolicy::getAccessStats(
-    HashedKey hk) const {
-  XDCHECK(index_);
-  const auto lr = index_->peek(hk.keyHash());
-  if (lr.found()) {
-    return AccessStats{lr.totalHits(), lr.currentHits()};
-  }
-  return {};
 }
 
 } // namespace navy

@@ -162,26 +162,34 @@ class CACHELIB_PACKED_ATTR CacheItem {
   const Key getKey() const noexcept;
 
   // Readonly memory for this allocation.
-  // TODO: switch the return type to 'const void*' once all the callsites
-  // are modified to use getMemory() and getWritableMemory() correctly
-  void* getMemory() const noexcept;
+  const void* getMemory() const noexcept;
 
   // Writable memory for this allocation. The caller is free to do whatever he
-  // wants with it and needs to ensure thread sage for access into this
+  // wants with it and needs to ensure thread safety for access into this
   // piece of memory.
-  void* getWritableMemory() const;
+  void* getMemory() noexcept;
+
+  // (deprecated) Writable memory for this allocation. The caller is free to do
+  // whatever he wants with it and needs to ensure thread sage for access into
+  // this piece of memory.
+  [[deprecated("Use getMemory() instead")]] void* getWritableMemory() const;
 
   // Cast item's readonly memory to a readonly user type
-  // TODO: switch the return type to 'const T*' once all the callsites
-  // are modified to use getMemory() and getWritableMemory() correctly
   template <typename T>
-  T* getMemoryAs() const noexcept {
-    return reinterpret_cast<T*>(getMemory());
+  const T* getMemoryAs() const noexcept {
+    return reinterpret_cast<const T*>(getMemory());
   }
 
   // Cast item's writable memory to a writable user type
   template <typename T>
-  T* getWritableMemoryAs() noexcept {
+  T* getMemoryAs() noexcept {
+    return reinterpret_cast<T*>(getMemory());
+  }
+
+  // (Deprecated) Cast item's writable memory to a writable user type
+  template <typename T>
+  [[deprecated("Use getMemoryAs() instead")]] T*
+  getWritableMemoryAs() noexcept {
     return reinterpret_cast<T*>(getWritableMemory());
   }
 
@@ -222,8 +230,6 @@ class CACHELIB_PACKED_ATTR CacheItem {
    * they're either the sole owner of this item or every one accessing this
    * item is only reading its content.
    */
-  bool isUnevictable() const noexcept;
-  bool isEvictable() const noexcept;
   bool isChainedItem() const noexcept;
   bool hasChainedItem() const noexcept;
 
@@ -285,6 +291,8 @@ class CACHELIB_PACKED_ATTR CacheItem {
   // @throw std::invalid_argument if item is not a chained item or the key
   //        size does not match with the current key
   void changeKey(Key key);
+
+  void* getMemoryInternal() const noexcept;
 
   /**
    * CacheItem's refcount contain admin references, access referneces, and
@@ -355,14 +363,6 @@ class CACHELIB_PACKED_ATTR CacheItem {
   void unmarkMoving() noexcept;
   bool isMoving() const noexcept;
   bool isOnlyMoving() const noexcept;
-
-  /**
-   * The following correspond to the evictable state of the item
-   * An unevictable item unevictable item may prevent the slab it
-   * belongs to from being released if it cannot be moved
-   */
-  void markUnevictable() noexcept;
-  void unmarkUnevictable() noexcept;
 
   /**
    * Item cannot be marked both chained allocation and
@@ -550,6 +550,7 @@ class CACHELIB_PACKED_ATTR CacheChainedItem : public CacheItem<CacheTrait> {
   friend CacheAllocator<CacheTrait>;
   friend CacheChainedAllocs<CacheAllocator<CacheTrait>>;
   friend CacheChainedItemIterator<CacheAllocator<CacheTrait>>;
+  friend NvmCache<CacheAllocator<CacheTrait>>;
   template <typename AllocatorT>
   friend class facebook::cachelib::tests::BaseAllocatorTest;
   FRIEND_TEST(ItemTest, ChainedItemConstruction);

@@ -42,7 +42,7 @@ namespace cachebench {
 // Items value in this cache follows CacheValue schema, which
 // contains a few integers for sanity checks use. So it is invalid
 // to use item.getMemory and item.getSize APIs directly and caller must use
-// the getMemory() and getWriteableMemory() through this cache instance.
+// getMemory() through this cache instance.
 template <typename Allocator>
 class Cache {
  public:
@@ -82,12 +82,12 @@ class Cache {
                       uint32_t ttlSecs = 0);
 
   // inserts the item into the cache and tracks it.
-  ItemHandle insertOrReplace(const ItemHandle& handle);
+  ItemHandle insertOrReplace(ItemHandle& handle);
 
   // inserts the handle into cache and returns true if the insert was
   // successful, false otherwise. Insert operation can not be performed when
   // consistency checking is enabled.
-  bool insert(const ItemHandle& handle);
+  bool insert(ItemHandle& handle);
 
   // perform lookup in the cache and if consistency checking is enabled,
   // ensure that the lookup result is consistent with the past actions and
@@ -128,7 +128,7 @@ class Cache {
   // Adds a chained item to the parent.
   // @param  parent   the parent item's handle
   // @param child     handle to the child
-  void addChainedItem(const ItemHandle& parent, ItemHandle child);
+  void addChainedItem(ItemHandle& parent, ItemHandle child);
 
   template <typename... Params>
   auto viewAsChainedAllocs(Params&&... args) {
@@ -139,13 +139,13 @@ class Cache {
   // cache adds some overheads on top of Cache::Item.
 
   // Return the readonly memory
-  const void* getMemory(const ItemHandle& item) const noexcept {
-    return item == nullptr ? nullptr : getMemory(*item);
+  const void* getMemory(const ItemHandle& handle) const noexcept {
+    return handle == nullptr ? nullptr : getMemory(*handle);
   }
 
   // Return the writable memory
-  void* getWritableMemory(ItemHandle& item) const noexcept {
-    return item == nullptr ? nullptr : getWritableMemory(*item);
+  void* getMemory(ItemHandle& handle) noexcept {
+    return handle == nullptr ? nullptr : getMemory(*handle);
   }
 
   // Return the readonly memory
@@ -154,8 +154,8 @@ class Cache {
   }
 
   // Return the writable memory
-  void* getWritableMemory(Item& item) const noexcept {
-    return item.template getWritableMemoryAs<CacheValue>()->getWritableData();
+  void* getMemory(Item& item) noexcept {
+    return item.template getMemoryAs<CacheValue>()->getData();
   }
 
   // return the allocation size for the item.
@@ -179,7 +179,7 @@ class Cache {
   //
   // @param handle   the handle for the item
   // @param str      the string value to be set.
-  void setStringItem(ItemHandle& handle, const std::string& str) const;
+  void setStringItem(ItemHandle& handle, const std::string& str);
 
   // when item records are enabled, updates the version for the item and
   // correspondingly invalidates the nvm cache.
@@ -227,7 +227,7 @@ class Cache {
   // is useful only when consistency checking is enabled by calling
   // enableConsistencyCheck()
   bool isInvalidKey(const std::string& key) {
-    return invalidKeys_[key].load(std::memory_order_release);
+    return invalidKeys_[key].load(std::memory_order_relaxed);
   }
 
   // Get overall stats on the whole cache allocator
@@ -238,7 +238,7 @@ class Cache {
 
   // return the total number of inconsistent operations detected since start.
   unsigned int getInconsistencyCount() const {
-    return inconsistencyCount_.load(std::memory_order_release);
+    return inconsistencyCount_.load(std::memory_order_relaxed);
   }
 
   // return the number of times Item destructor was called inconsistently.
@@ -268,7 +268,7 @@ class Cache {
 
   // empties the cache entries by removing the keys, this will schedule the
   // destructor call backs to be executed.
-  void clearCache();
+  void clearCache(uint64_t errorLimit);
 
   // shuts down the cache for persistence. User shall not access the instance
   // until the cache is re-attached using reAttach() below.

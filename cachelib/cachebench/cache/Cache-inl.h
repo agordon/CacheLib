@@ -64,7 +64,7 @@ Cache<Allocator>::Cache(const CacheConfig& config,
     allocatorConfig_.enableMovingOnSlabRelease(
         [](Item& oldItem, Item& newItem, Item* parentPtr) {
           XDCHECK(oldItem.isChainedItem() == (parentPtr != nullptr));
-          std::memcpy(newItem.getWritableMemory(), oldItem.getMemory(),
+          std::memcpy(newItem.getMemory(), oldItem.getMemory(),
                       oldItem.getSize());
         },
         movingSync);
@@ -101,8 +101,7 @@ Cache<Allocator>::Cache(const CacheConfig& config,
   });
 
   if (config_.enableItemDestructorCheck) {
-    // TODO (zixuan) use ItemDestructor once feature is finished
-    auto removeCB = [&](const typename Allocator::RemoveCbData& data) {
+    auto removeCB = [&](const typename Allocator::DestructorData& data) {
       if (!itemRecords_.validate(data)) {
         ++invalidDestructor_;
       }
@@ -110,18 +109,15 @@ Cache<Allocator>::Cache(const CacheConfig& config,
       // size of itemRecords_ (also is the number of new allocations)
       ++totalDestructor_;
     };
-    allocatorConfig_.setRemoveCallback(removeCB);
+    allocatorConfig_.setItemDestructor(removeCB);
   } else if (config_.enableItemDestructor) {
-    // TODO (zixuan) use ItemDestructor once feature is finished
-    auto removeCB = [&](const typename Allocator::RemoveCbData&) {};
-    allocatorConfig_.setRemoveCallback(removeCB);
+    auto removeCB = [&](const typename Allocator::DestructorData&) {};
+    allocatorConfig_.setItemDestructor(removeCB);
   }
 
   // Set up Navy
   if (!isRamOnly()) {
     typename Allocator::NvmCacheConfig nvmConfig;
-
-    nvmConfig.navyConfig.setBlockCacheDataChecksum(config_.navyDataChecksum);
 
     nvmConfig.enableFastNegativeLookups = true;
 
@@ -151,58 +147,67 @@ Cache<Allocator>::Cache(const CacheConfig& config,
       nvmConfig.navyConfig.setMemoryFile(config_.nvmCacheSizeMB * MB);
     }
 
-    if (config_.navyNumInmemBuffers > 0) {
-      nvmConfig.navyConfig.setBlockCacheNumInMemBuffers(
-          config_.navyNumInmemBuffers);
-    }
-
     if (config_.navyReqOrderShardsPower != 0) {
       nvmConfig.navyConfig.setNavyReqOrderingShards(
           config_.navyReqOrderShardsPower);
+    }
+    nvmConfig.navyConfig.setBlockSize(config_.navyBlockSize);
+
+    // configure BlockCache
+    auto& bcConfig = nvmConfig.navyConfig.blockCache()
+                         .setDataChecksum(config_.navyDataChecksum)
+                         .setCleanRegions(config_.navyCleanRegions,
+                                          false /*enable in-mem buffer*/)
+                         .setRegionSize(config_.navyRegionSizeMB * MB);
+
+    // We have to use the old API to separately set the in-mem buffer
+    // due to T102105644
+    // TODO: cleanup the old API after we understand why 2*cleanRegions will
+    // cause cogwheel tests issue
+    if (config_.navyNumInmemBuffers > 0) {
+      nvmConfig.navyConfig.setBlockCacheNumInMemBuffers(
+          config_.navyNumInmemBuffers);
     }
 
     // by default lru. if more than one fifo ratio is present, we use
     // segmented fifo. otherwise, simple fifo.
     if (!config_.navySegmentedFifoSegmentRatio.empty()) {
       if (config.navySegmentedFifoSegmentRatio.size() == 1) {
-        nvmConfig.navyConfig.blockCache().enableFifo();
+        bcConfig.enableFifo();
       } else {
-        nvmConfig.navyConfig.blockCache().enableSegmentedFifo(
-            config_.navySegmentedFifoSegmentRatio);
+        bcConfig.enableSegmentedFifo(config_.navySegmentedFifoSegmentRatio);
       }
     }
-    nvmConfig.navyConfig.setBlockSize(config_.navyBlockSize);
-    nvmConfig.navyConfig.setBlockCacheRegionSize(config_.navyRegionSizeMB * MB);
 
     if (!config_.navySizeClasses.empty()) {
-      nvmConfig.navyConfig.setBlockCacheSizeClasses(config_.navySizeClasses);
+      bcConfig.useSizeClasses(config_.navySizeClasses);
     }
 
+    if (config_.navyHitsReinsertionThreshold > 0) {
+      bcConfig.enableHitsBasedReinsertion(
+          static_cast<uint8_t>(config_.navyHitsReinsertionThreshold));
+    }
+    if (config_.navyProbabilityReinsertionThreshold > 0) {
+      bcConfig.enablePctBasedReinsertion(
+          config_.navyProbabilityReinsertionThreshold);
+    }
+
+    // configure BigHash if enabled
     if (config_.navyBigHashSizePct > 0) {
-      nvmConfig.navyConfig.setBigHash(config_.navyBigHashSizePct,
-                                      config_.navyBigHashBucketSize,
-                                      config_.navyBloomFilterPerBucketSize,
-                                      config_.navySmallItemMaxSize);
+      nvmConfig.navyConfig.bigHash()
+          .setSizePctAndMaxItemSize(config_.navyBigHashSizePct,
+                                    config_.navySmallItemMaxSize)
+          .setBucketSize(config_.navyBigHashBucketSize)
+          .setBucketBfSize(config_.navyBloomFilterPerBucketSize);
     }
 
     nvmConfig.navyConfig.setMaxParcelMemoryMB(config_.navyParcelMemoryMB);
 
-    if (config_.navyHitsReinsertionThreshold > 0) {
-      nvmConfig.navyConfig.setBlockCacheReinsertionHitsThreshold(
-          static_cast<uint8_t>(config_.navyHitsReinsertionThreshold));
-    }
-    if (config_.navyProbabilityReinsertionThreshold > 0) {
-      nvmConfig.navyConfig.setBlockCacheReinsertionProbabilityThreshold(
-          config_.navyProbabilityReinsertionThreshold);
-    }
-
     nvmConfig.navyConfig.setReaderAndWriterThreads(config_.navyReaderThreads,
                                                    config_.navyWriterThreads);
 
-    nvmConfig.navyConfig.setBlockCacheCleanRegions(config_.navyCleanRegions);
     if (config_.navyAdmissionWriteRateMB > 0) {
-      nvmConfig.navyConfig.setAdmissionPolicy("dynamic_random");
-      nvmConfig.navyConfig.setAdmissionWriteRate(
+      nvmConfig.navyConfig.enableDynamicRandomAdmPolicy().setAdmWriteRate(
           config_.navyAdmissionWriteRateMB * MB);
     }
     nvmConfig.navyConfig.setMaxConcurrentInserts(
@@ -344,14 +349,13 @@ typename Cache<Allocator>::ItemHandle Cache<Allocator>::allocateChainedItem(
     const ItemHandle& parent, size_t size) {
   auto handle = cache_->allocateChainedItem(parent, CacheValue::getSize(size));
   if (handle) {
-    CacheValue::initialize(handle->getWritableMemory());
+    CacheValue::initialize(handle->getMemory());
   }
   return handle;
 }
 
 template <typename Allocator>
-void Cache<Allocator>::addChainedItem(const ItemHandle& parent,
-                                      ItemHandle child) {
+void Cache<Allocator>::addChainedItem(ItemHandle& parent, ItemHandle child) {
   itemRecords_.updateItemVersion(*parent);
   cache_->addChainedItem(parent, std::move(child));
 }
@@ -364,7 +368,7 @@ typename Cache<Allocator>::ItemHandle Cache<Allocator>::replaceChainedItem(
 }
 
 template <typename Allocator>
-bool Cache<Allocator>::insert(const ItemHandle& handle) {
+bool Cache<Allocator>::insert(ItemHandle& handle) {
   // Insert is not supported in consistency checking mode because consistency
   // checking assumes a Set always succeeds and overrides existing value.
   XDCHECK(!consistencyCheckEnabled());
@@ -379,7 +383,7 @@ typename Cache<Allocator>::ItemHandle Cache<Allocator>::allocate(
   try {
     handle = cache_->allocate(pid, key, CacheValue::getSize(size), ttlSecs);
     if (handle) {
-      CacheValue::initialize(handle->getWritableMemory());
+      CacheValue::initialize(handle->getMemory());
     }
   } catch (const std::invalid_argument& e) {
     XLOGF(DBG, "Unable to allocate, reason: {}", e.what());
@@ -389,7 +393,7 @@ typename Cache<Allocator>::ItemHandle Cache<Allocator>::allocate(
 }
 template <typename Allocator>
 typename Cache<Allocator>::ItemHandle Cache<Allocator>::insertOrReplace(
-    const ItemHandle& handle) {
+    ItemHandle& handle) {
   itemRecords_.addItemRecord(handle);
 
   if (!consistencyCheckEnabled()) {
@@ -428,7 +432,7 @@ typename Cache<Allocator>::ItemHandle Cache<Allocator>::find(Key key,
   auto opId = valueTracker_->beginGet(key);
   auto it = findFn();
   if (checkGet(opId, it)) {
-    invalidKeys_[key.str()].store(true, std::memory_order_acquire);
+    invalidKeys_[key.str()].store(true, std::memory_order_relaxed);
   }
   return it;
 }
@@ -448,7 +452,7 @@ bool Cache<Allocator>::checkGet(ValueTracker::Index opId,
   }
   if (!valueTracker_->endGet(opId, expected, found, &es)) {
     std::cout << (es.format() + it->toString() + "\n");
-    inconsistencyCount_.fetch_add(1, std::memory_order::memory_order_acquire);
+    inconsistencyCount_.fetch_add(1, std::memory_order_relaxed);
     return true;
   }
   return false;
@@ -473,6 +477,7 @@ Stats Cache<Allocator>::getStats() const {
 
   ret.numCacheGets = cacheStats.numCacheGets;
   ret.numCacheGetMiss = cacheStats.numCacheGetMiss;
+  ret.numRamDestructorCalls = cacheStats.numRamDestructorCalls;
   ret.numNvmGets = cacheStats.numNvmGets;
   ret.numNvmGetMiss = cacheStats.numNvmGetMiss;
   ret.numNvmGetCoalesced = cacheStats.numNvmGetCoalesced;
@@ -487,6 +492,7 @@ Stats Cache<Allocator>::getStats() const {
   ret.numNvmUncleanEvict = cacheStats.numNvmUncleanEvict;
   ret.numNvmCleanEvict = cacheStats.numNvmCleanEvict;
   ret.numNvmCleanDoubleEvict = cacheStats.numNvmCleanDoubleEvict;
+  ret.numNvmDestructorCalls = cacheStats.numNvmDestructorCalls;
   ret.numNvmEvictions = cacheStats.numNvmEvictions;
 
   ret.numNvmDeletes = cacheStats.numNvmDeletes;
@@ -552,6 +558,7 @@ Stats Cache<Allocator>::getStats() const {
     ret.nvmWriteLatencyMicrosP999999 =
         lookup("navy_device_write_latency_us_p999999");
     ret.nvmWriteLatencyMicrosP100 = lookup("navy_device_write_latency_us_p100");
+    ret.numNvmItemRemovedSetSize = lookup("items_tracked_for_destructor");
 
     // track any non-zero check sum errors or io errors
     for (const auto& [k, v] : navyStats) {
@@ -566,7 +573,7 @@ Stats Cache<Allocator>::getStats() const {
 }
 
 template <typename Allocator>
-void Cache<Allocator>::clearCache() {
+void Cache<Allocator>::clearCache(uint64_t errorLimit) {
   if (config_.enableItemDestructorCheck) {
     // all items leftover in the cache must be removed
     // at the end of the test to trigger ItemDestrutor
@@ -578,6 +585,7 @@ void Cache<Allocator>::clearCache() {
       cache_->remove(key);
     }
     cache_->flushNvmCache();
+    itemRecords_.findUndestructedItem(std::cout, errorLimit);
   }
 }
 
@@ -610,14 +618,14 @@ void Cache<Allocator>::trackChainChecksum(const ItemHandle& handle) {
 template <typename Allocator>
 void Cache<Allocator>::setUint64ToItem(ItemHandle& handle, uint64_t num) const {
   XDCHECK(handle);
-  auto ptr = handle->template getWritableMemoryAs<CacheValue>();
+  auto ptr = handle->template getMemoryAs<CacheValue>();
   ptr->setConsistencyNum(num);
 }
 
 template <typename Allocator>
 void Cache<Allocator>::setStringItem(ItemHandle& handle,
-                                     const std::string& str) const {
-  auto ptr = reinterpret_cast<uint8_t*>(getWritableMemory(handle));
+                                     const std::string& str) {
+  auto ptr = reinterpret_cast<uint8_t*>(getMemory(handle));
   std::memcpy(ptr, str.data(), std::min<size_t>(str.size(), getSize(handle)));
 }
 

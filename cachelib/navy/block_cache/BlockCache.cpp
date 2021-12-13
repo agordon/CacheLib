@@ -60,6 +60,9 @@ BlockCache::Config& BlockCache::Config::validate() {
   if (numPriorities == 0) {
     throw std::invalid_argument("allocator must have at least one priority");
   }
+
+  reinsertionConfig.validate();
+
   return *this;
 }
 
@@ -125,6 +128,7 @@ BlockCache::BlockCache(Config&& config, ValidConfigTag)
                           ? kDefReadBufferSize
                           : config.readBufferSize},
       regionSize_{config.regionSize},
+      itemDestructorEnabled_{config.itemDestructorEnabled},
       regionManager_{config.getNumRegions(),
                      config.regionSize,
                      config.cacheBaseOffset,
@@ -139,15 +143,24 @@ BlockCache::BlockCache(Config&& config, ValidConfigTag)
                      config.numPriorities,
                      config.inMemBufFlushRetryLimit},
       allocator_{regionManager_, config.numPriorities},
-      reinsertionPolicy_{std::move(config.reinsertionPolicy)},
+      reinsertionPolicy_{makeReinsertionPolicy(config.reinsertionConfig)},
       sizeDist_{kMinSizeDistribution, config.regionSize,
                 kSizeDistributionGranularityFactor} {
-  if (reinsertionPolicy_) {
-    reinsertionPolicy_->setIndex(&index_);
-  }
-  validate(config);
   XLOG(INFO, "Block cache created");
   XDCHECK_NE(readBufferSize_, 0u);
+}
+std::shared_ptr<BlockCacheReinsertionPolicy> BlockCache::makeReinsertionPolicy(
+    const BlockCacheReinsertionConfig& reinsertionConfig) {
+  auto hitsThreshold = reinsertionConfig.getHitsThreshold();
+  if (hitsThreshold) {
+    return std::make_shared<HitsReinsertionPolicy>(hitsThreshold, index_);
+  }
+
+  auto pctThreshold = reinsertionConfig.getPctThreshold();
+  if (pctThreshold) {
+    return std::make_shared<PercentageReinsertionPolicy>(pctThreshold);
+  }
+  return reinsertionConfig.getCustomPolicy();
 }
 
 uint32_t BlockCache::serializedSize(uint32_t keySize,
@@ -252,12 +265,33 @@ Status BlockCache::lookup(HashedKey hk, Buffer& value) {
 
 Status BlockCache::remove(HashedKey hk) {
   removeCount_.inc();
+
+  Buffer value;
+  if (itemDestructorEnabled_ && destructorCb_) {
+    Status status = lookup(hk, value);
+
+    if (status != Status::Ok) {
+      // device error, or region reclaimed, or item not found
+      value.reset();
+      if (status == Status::Retry) {
+        return status;
+      } else if (status != Status::NotFound) {
+        lookupForItemDestructorErrorCount_.inc();
+        // still fail after retry, return a BadState to disable navy
+        return Status::BadState;
+      }
+    }
+  }
+
   auto lr = index_.remove(hk.keyHash());
   if (lr.found()) {
     auto addr = decodeRelAddress(lr.address());
     holeSizeTotal_.add(regionManager_.getRegionSlotSize(addr.rid()));
     holeCount_.inc();
     succRemoveCount_.inc();
+    if (!value.isNull()) {
+      destructorCb_(hk.key(), value.view(), DestructorEvent::Removed);
+    }
     return Status::Ok;
   }
   return Status::NotFound;
@@ -331,12 +365,8 @@ uint32_t BlockCache::onRegionReclaim(RegionId rid,
       break;
     }
 
-    if (destructorCb_ && reinsertionRes != ReinsertionRes::kReinserted) {
-      destructorCb_(hk.key(),
-                    value,
-                    reinsertionRes == ReinsertionRes::kEvicted
-                        ? DestructorEvent::Recycled
-                        : DestructorEvent::Removed);
+    if (destructorCb_ && reinsertionRes == ReinsertionRes::kEvicted) {
+      destructorCb_(hk.key(), value, DestructorEvent::Recycled);
     }
     XDCHECK_GE(offset, entrySize);
     offset -= entrySize;
@@ -401,11 +431,8 @@ void BlockCache::onRegionCleanup(RegionId rid,
     } else {
       removedItem++;
     }
-    if (destructorCb_) {
-      destructorCb_(hk.key(),
-                    value,
-                    removeRes ? DestructorEvent::Recycled
-                              : DestructorEvent::Removed);
+    if (destructorCb_ && removeRes) {
+      destructorCb_(hk.key(), value, DestructorEvent::Recycled);
     }
     XDCHECK_GE(offset, entrySize);
     offset -= entrySize;
@@ -444,7 +471,10 @@ BlockCache::ReinsertionRes BlockCache::reinsertOrRemoveItem(
     return ReinsertionRes::kRemoved;
   }
 
-  if (!reinsertionPolicy_ || !reinsertionPolicy_->shouldReinsert(hk)) {
+  folly::StringPiece strKey{reinterpret_cast<const char*>(hk.key().data()),
+                            hk.key().size()};
+
+  if (!reinsertionPolicy_ || !reinsertionPolicy_->shouldReinsert(strKey)) {
     return removeItem();
   }
 
@@ -654,6 +684,8 @@ void BlockCache::getCounters(const CounterVisitor& visitor) const {
   visitor("navy_bc_reinsertions", reinsertionCount_.get());
   visitor("navy_bc_reinsertion_bytes", reinsertionBytes_.get());
   visitor("navy_bc_reinsertion_errors", reinsertionErrorCount_.get());
+  visitor("navy_bc_lookup_for_item_destructor_errors",
+          lookupForItemDestructorErrorCount_.get());
 
   auto snapshot = sizeDist_.getSnapshot();
   for (auto& kv : snapshot) {

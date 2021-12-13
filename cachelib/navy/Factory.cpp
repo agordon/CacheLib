@@ -19,14 +19,14 @@
 #include <folly/Format.h>
 #include <folly/Random.h>
 
+#include <stdexcept>
+
 #include "cachelib/navy/admission_policy/DynamicRandomAP.h"
 #include "cachelib/navy/admission_policy/RejectRandomAP.h"
 #include "cachelib/navy/bighash/BigHash.h"
 #include "cachelib/navy/block_cache/BlockCache.h"
 #include "cachelib/navy/block_cache/FifoPolicy.h"
-#include "cachelib/navy/block_cache/HitsReinsertionPolicy.h"
 #include "cachelib/navy/block_cache/LruPolicy.h"
-#include "cachelib/navy/block_cache/PercentageReinsertionPolicy.h"
 #include "cachelib/navy/driver/Driver.h"
 #include "cachelib/navy/serialization/RecordIO.h"
 
@@ -93,26 +93,19 @@ class BlockCacheProtoImpl final : public BlockCacheProto {
     config_.cleanRegionsPool = n;
   }
 
-  void setHitsReinsertionPolicy(uint8_t reinsertionThreshold) override {
-    if (config_.reinsertionPolicy) {
-      throw std::invalid_argument("There's already a reinsertion policy set.");
-    }
-    config_.reinsertionPolicy =
-        std::make_unique<HitsReinsertionPolicy>(reinsertionThreshold);
-  }
-
-  void setPercentageReinsertionPolicy(uint32_t percentage) override {
-    if (config_.reinsertionPolicy) {
-      throw std::invalid_argument("There's already a reinsertion policy set.");
-    }
-    config_.reinsertionPolicy =
-        std::make_unique<PercentageReinsertionPolicy>(percentage);
+  void setReinsertionConfig(
+      const BlockCacheReinsertionConfig& reinsertionConfig) override {
+    config_.reinsertionConfig = reinsertionConfig;
   }
 
   void setDevice(Device* device) { config_.device = device; }
 
   void setNumInMemBuffers(uint32_t numInMemBuffers) override {
     config_.numInMemBuffers = numInMemBuffers;
+  }
+
+  void setItemDestructorEnabled(bool itemDestructorEnabled) override {
+    config_.itemDestructorEnabled = itemDestructorEnabled;
   }
 
   std::unique_ptr<Engine> create(JobScheduler& scheduler,

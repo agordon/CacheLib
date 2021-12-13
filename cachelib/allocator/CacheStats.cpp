@@ -48,13 +48,14 @@ template <int>
 struct SizeVerify {};
 
 void Stats::populateGlobalCacheStats(GlobalCacheStats& ret) const {
-  SizeVerify<sizeof(Stats)> a = SizeVerify<15680>{};
+  SizeVerify<sizeof(Stats)> a = SizeVerify<15968>{};
   std::ignore = a;
   ret.numCacheGets = numCacheGets.get();
   ret.numCacheGetMiss = numCacheGetMiss.get();
   ret.numCacheGetExpiries = numCacheGetExpiries.get();
   ret.numCacheRemoves = numCacheRemoves.get();
   ret.numCacheRemoveRamHits = numCacheRemoveRamHits.get();
+  ret.numRamDestructorCalls = numRamDestructorCalls.get();
 
   ret.numNvmGets = numNvmGets.get();
   ret.numNvmGetMiss = numNvmGetMiss.get();
@@ -69,9 +70,10 @@ void Stats::populateGlobalCacheStats(GlobalCacheStats& ret) const {
   ret.numNvmAbortedPutOnTombstone += numNvmAbortedPutOnTombstone.get();
   ret.numNvmCompactionFiltered += numNvmCompactionFiltered.get();
   ret.numNvmAbortedPutOnInflightGet = numNvmAbortedPutOnInflightGet.get();
-  ret.numNvmUncleanEvict = numNvmUncleanEvict.get();
   ret.numNvmCleanEvict = numNvmCleanEvict.get();
   ret.numNvmCleanDoubleEvict = numNvmCleanDoubleEvict.get();
+  ret.numNvmDestructorCalls = numNvmDestructorCalls.get();
+  ret.numNvmDestructorRefcountOverflow = numNvmDestructorRefcountOverflow.get();
   ret.numNvmExpiredEvict = numNvmExpiredEvict.get();
   ret.numNvmPutFromClean = numNvmPutFromClean.get();
   ret.numNvmEvictions = numNvmEvictions.get();
@@ -83,10 +85,11 @@ void Stats::populateGlobalCacheStats(GlobalCacheStats& ret) const {
   ret.numNvmRejectsByClean = numNvmRejectsByClean.get();
   ret.numNvmRejectsByAP = numNvmRejectsByAP.get();
 
-  ret.numPermanentItems = numPermanentItems.get();
   ret.numChainedParentItems = numChainedParentItems.get();
   ret.numChainedChildItems = numChainedChildItems.get();
   ret.numNvmAllocAttempts = numNvmAllocAttempts.get();
+  ret.numNvmAllocForItemDestructor = numNvmAllocForItemDestructor.get();
+  ret.numNvmItemDestructorAllocErrors = numNvmItemDestructorAllocErrors.get();
 
   ret.allocateLatencyNs = this->allocateLatency_.estimate();
   ret.moveChainedLatencyNs = this->moveChainedLatency_.estimate();
@@ -126,7 +129,6 @@ void Stats::populateGlobalCacheStats(GlobalCacheStats& ret) const {
   ret.numEvictionFailureFromMoving = evictFailMove.get();
   ret.numEvictionFailureFromParentMoving = evictFailParentMove.get();
   ret.numAbortedSlabReleases = numAbortedSlabReleases.get();
-  ret.numNvmPermItems = numNvmPermItems.get();
 }
 
 } // namespace detail
@@ -181,9 +183,6 @@ PoolStats& PoolStats::operator+=(const PoolStats& other) {
         d.oldestTimeSec = s.oldestTimeSec;
       }
 
-      d.numLockByInserts += s.numLockByInserts;
-      d.numLockByRecordAccesses += s.numLockByRecordAccesses;
-      d.numLockByRemoves += s.numLockByRemoves;
       d.numHotAccesses += s.numHotAccesses;
       d.numColdAccesses += s.numColdAccesses;
       d.numWarmAccesses += s.numWarmAccesses;
@@ -311,14 +310,6 @@ uint64_t PoolStats::numEvictableItems() const noexcept {
   uint64_t n = 0;
   for (const auto& s : cacheStats) {
     n += s.second.numEvictableItems();
-  }
-  return n;
-}
-
-uint64_t PoolStats::numUnevictableItems() const noexcept {
-  uint64_t n = 0;
-  for (const auto& s : cacheStats) {
-    n += s.second.numUnevictableItems();
   }
   return n;
 }

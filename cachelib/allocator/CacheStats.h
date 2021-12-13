@@ -86,15 +86,6 @@ struct MMContainerStat {
   // the container.
   uint64_t oldestTimeSec;
 
-  // number of lock hits by inserts into the LRU
-  uint64_t numLockByInserts;
-
-  // number of lock hits by recordAccess
-  uint64_t numLockByRecordAccesses;
-
-  // number of lock hits by removes
-  uint64_t numLockByRemoves;
-
   // refresh time for LRU
   uint64_t lruRefreshTime;
 
@@ -130,20 +121,13 @@ struct CacheStat {
   // number of regular items that were evicted from this classId
   uint64_t regularItemEvictions;
 
-  // the stats from the mm container for evictable and unevictable items
+  // the stats from the mm container
   MMContainerStat containerStat;
-  MMContainerStat unevictableContainerStat;
 
-  uint64_t numItems() const noexcept {
-    return numEvictableItems() + numUnevictableItems();
-  }
+  uint64_t numItems() const noexcept { return numEvictableItems(); }
 
   // number of elements in this MMContainer
   size_t numEvictableItems() const noexcept { return containerStat.size; }
-
-  size_t numUnevictableItems() const noexcept {
-    return unevictableContainerStat.size;
-  }
 
   // total number of evictions.
   uint64_t numEvictions() const noexcept {
@@ -216,9 +200,6 @@ struct PoolStats {
 
   // number of evictable items
   uint64_t numEvictableItems() const noexcept;
-
-  // number of unevictable items
-  uint64_t numUnevictableItems() const noexcept;
 
   // total number of allocations currently in this pool
   uint64_t numActiveAllocs() const noexcept;
@@ -341,6 +322,9 @@ struct GlobalCacheStats {
   // number of remove calls that resulted in a ram hit
   uint64_t numCacheRemoveRamHits{0};
 
+  // number of item destructor calls from ram
+  uint64_t numRamDestructorCalls{0};
+
   // number of nvm gets
   uint64_t numNvmGets{0};
 
@@ -396,11 +380,26 @@ struct GlobalCacheStats {
   // number of evictions that were already expired
   uint64_t numNvmExpiredEvict{0};
 
+  // number of item destructor calls from nvm
+  uint64_t numNvmDestructorCalls{0};
+
+  // number of RefcountOverflow happens causing item destructor
+  // being skipped in nvm
+  uint64_t numNvmDestructorRefcountOverflow{0};
+
   // number of puts to nvm of a clean item in RAM due to nvm eviction.
   uint64_t numNvmPutFromClean{0};
 
   // attempts made from nvm cache to allocate an item for promotion
   uint64_t numNvmAllocAttempts{0};
+
+  // attempts made from nvm cache to allocate an item for its destructor
+  uint64_t numNvmAllocForItemDestructor{0};
+  // heap allocate errors for item destrutor
+  uint64_t numNvmItemDestructorAllocErrors{0};
+
+  // size of itemRemoved_ hash set in nvm
+  uint64_t numNvmItemRemovedSetSize{0};
 
   // number of attempts to allocate an item
   uint64_t allocAttempts{0};
@@ -420,8 +419,8 @@ struct GlobalCacheStats {
   // number of refcount overflows
   uint64_t numRefcountOverflow{0};
 
-  // number of allocated items that are permanent
-  uint64_t numPermanentItems{0};
+  // number of exception occurred inside item destructor
+  uint64_t numDestructorExceptions{0};
 
   // number of allocated and CHAINED items that are parents (i.e.,
   // consisting of at least one chained child)
@@ -480,8 +479,6 @@ struct GlobalCacheStats {
   // not go to negative. If it's negative, it means we have
   // leaked handles (or some sort of accounting bug internally)
   int64_t numActiveHandles;
-
-  uint64_t numNvmPermItems{0};
 };
 
 struct CacheMemoryStats {

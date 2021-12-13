@@ -20,7 +20,8 @@
 
 #include <cstdint>
 
-#include "cachelib/navy/block_cache/ReinsertionPolicy.h"
+#include "cachelib/allocator/nvmcache/BlockCacheReinsertionPolicy.h"
+#include "folly/Range.h"
 #include "folly/logging/xlog.h"
 
 namespace facebook {
@@ -30,7 +31,7 @@ namespace navy {
 // This is used for testing where a certain fraction of evicted items(governed
 // by the percentage) are always reinserted. The percentage value is between 0
 // and 100 for reinsertion.
-class PercentageReinsertionPolicy : public ReinsertionPolicy {
+class PercentageReinsertionPolicy : public BlockCacheReinsertionPolicy {
  public:
   // @param percentage     reinsertion chances: 0 - 100
   explicit PercentageReinsertionPolicy(uint32_t percentage)
@@ -38,19 +39,13 @@ class PercentageReinsertionPolicy : public ReinsertionPolicy {
     XDCHECK(percentage > 0 && percentage <= 100);
   }
 
-  void setIndex(Index* /* index */) override {}
-
   // Applies percentage based policy to determine whether or not we should keep
   // this key around longer in cache.
-  bool shouldReinsert(HashedKey /* hk */) override {
+  bool shouldReinsert(folly::StringPiece /* key */) override {
     return folly::Random::rand32() % 100 < percentage_;
   }
 
-  void persist(RecordWriter& /* rw */) override {}
-
-  void recover(RecordReader& /* rr */) override {}
-
-  void getCounters(const CounterVisitor& /* visitor */) const override {}
+  void getCounters(const util::CounterVisitor& /* visitor */) const override {}
 
  private:
   const uint32_t percentage_;

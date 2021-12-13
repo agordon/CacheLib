@@ -19,61 +19,62 @@
 #include <thread>
 
 #include "cachelib/navy/block_cache/HitsReinsertionPolicy.h"
+#include "cachelib/navy/common/Hash.h"
 #include "cachelib/navy/serialization/RecordIO.h"
 
 namespace facebook {
 namespace cachelib {
 namespace navy {
 namespace tests {
+
 TEST(HitsReinsertionPolicy, Simple) {
   Index index;
-  HitsReinsertionPolicy tracker{1};
-  tracker.setIndex(&index);
+  HitsReinsertionPolicy tracker{1, index};
 
   auto hk1 = makeHK("test_key_1");
+  folly::StringPiece strKey{reinterpret_cast<const char*>(hk1.key().data()),
+                            hk1.key().size()};
 
   // lookup before inserting has no effect
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(0, access.totalHits);
-    EXPECT_EQ(0, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_FALSE(lr.found());
   }
 
   // lookup after inserting has effect
   index.insert(hk1.keyHash(), 0, 0);
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(0, access.totalHits);
-    EXPECT_EQ(0, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_EQ(0, lr.totalHits());
+    EXPECT_EQ(0, lr.currentHits());
   }
 
   index.lookup(hk1.keyHash());
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(1, access.totalHits);
-    EXPECT_EQ(1, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_EQ(1, lr.totalHits());
+    EXPECT_EQ(1, lr.currentHits());
   }
 
-  EXPECT_TRUE(tracker.shouldReinsert(hk1));
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(1, access.totalHits);
-    EXPECT_EQ(1, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_TRUE(tracker.shouldReinsert(strKey));
+    EXPECT_EQ(1, lr.totalHits());
+    EXPECT_EQ(1, lr.currentHits());
   }
 
   // lookup again
   index.lookup(hk1.keyHash());
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(2, access.totalHits);
-    EXPECT_EQ(2, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_EQ(2, lr.totalHits());
+    EXPECT_EQ(2, lr.currentHits());
   }
 
   index.remove(hk1.keyHash());
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(0, access.totalHits);
-    EXPECT_EQ(0, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_FALSE(lr.found());
   }
 
   // removing a second time is fine. Just no-op
@@ -82,8 +83,6 @@ TEST(HitsReinsertionPolicy, Simple) {
 
 TEST(HitsReinsertionPolicy, UpperBound) {
   Index index;
-  HitsReinsertionPolicy tracker{1};
-  tracker.setIndex(&index);
   auto hk1 = makeHK("test_key_1");
 
   index.insert(hk1.keyHash(), 0, 0);
@@ -91,16 +90,15 @@ TEST(HitsReinsertionPolicy, UpperBound) {
     index.lookup(hk1.keyHash());
   }
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(255, access.totalHits);
-    EXPECT_EQ(255, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_EQ(255, lr.totalHits());
+    EXPECT_EQ(255, lr.currentHits());
   }
 }
 
 TEST(HitsReinsertionPolicy, ThreadSafe) {
   Index index;
-  HitsReinsertionPolicy tracker{1};
-  tracker.setIndex(&index);
+
   auto hk1 = makeHK("test_key_1");
 
   index.insert(hk1.keyHash(), 0, 0);
@@ -117,16 +115,15 @@ TEST(HitsReinsertionPolicy, ThreadSafe) {
   }
 
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(159, access.totalHits);
-    EXPECT_EQ(159, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+
+    EXPECT_EQ(159, lr.totalHits());
+    EXPECT_EQ(159, lr.currentHits());
   }
 }
 
 TEST(HitsReinsertionPolicy, Recovery) {
   Index index;
-  HitsReinsertionPolicy tracker{1};
-  tracker.setIndex(&index);
   auto hk1 = makeHK("test_key_1");
 
   index.insert(hk1.keyHash(), 0, 0);
@@ -134,9 +131,9 @@ TEST(HitsReinsertionPolicy, Recovery) {
     index.lookup(hk1.keyHash());
   }
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(255, access.totalHits);
-    EXPECT_EQ(255, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_EQ(255, lr.totalHits());
+    EXPECT_EQ(255, lr.currentHits());
   }
 
   // persist to memory then recover from it
@@ -150,9 +147,9 @@ TEST(HitsReinsertionPolicy, Recovery) {
 
   // access stats should be the same
   {
-    auto access = tracker.getAccessStats(hk1);
-    EXPECT_EQ(255, access.totalHits);
-    EXPECT_EQ(255, access.currHits);
+    auto lr = index.peek(hk1.keyHash());
+    EXPECT_EQ(255, lr.totalHits());
+    EXPECT_EQ(255, lr.currentHits());
   }
 }
 

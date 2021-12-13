@@ -23,8 +23,10 @@
 #include <mutex>
 #include <vector>
 
+#include "cachelib/allocator/nvmcache/BlockCacheReinsertionPolicy.h"
 #include "cachelib/common/PercentileStats.h"
-#include "cachelib/navy/block_cache/ReinsertionPolicy.h"
+#include "cachelib/navy/block_cache/Index.h"
+#include "folly/Range.h"
 
 namespace facebook {
 namespace cachelib {
@@ -35,44 +37,22 @@ namespace navy {
 // can better approximate a LRU than the region-based LRU. Typically users
 // apply this with a region-granularity FIFO eviction policy, or SFIFO eviction
 // policy.
-class HitsReinsertionPolicy : public ReinsertionPolicy {
+class HitsReinsertionPolicy : public BlockCacheReinsertionPolicy {
  public:
-  struct AccessStats {
-    // Total hits during this item's entire lifetime in cache
-    uint8_t totalHits{0};
-
-    // Hits during the current window for this item (e.g. before re-admission)
-    uint8_t currHits{0};
-  };
-
   // @param hitsThreshold how many hits for an item is eligible for reinsertion
-  explicit HitsReinsertionPolicy(uint8_t hitsThreshold);
-
-  // Sets the index for hits based reinsertion policy.
-  void setIndex(Index* index) override { index_ = index; }
+  explicit HitsReinsertionPolicy(uint8_t hitsThreshold, const Index& index);
 
   // Applies hits based policy to determine whether or not we should keep
   // this key around longer in cache.
-  bool shouldReinsert(HashedKey hk) override;
-
-  void persist(RecordWriter& /* rw */) override {}
-
-  void recover(RecordReader& /* rr */) override {}
+  bool shouldReinsert(folly::StringPiece key) override;
 
   // Exports hits based reinsertion policy stats via CounterVisitor.
-  void getCounters(const CounterVisitor& visitor) const override;
-
-  // Gets the @AccessStats of a hashed key.
-  // Returns empty when the key is not found.
-  AccessStats getAccessStats(HashedKey hk) const;
+  void getCounters(const util::CounterVisitor& visitor) const override;
 
  private:
-  // TODO: T95755384 clean up kNumLocks
-  static constexpr size_t kNumLocks = (2 << 10);
-
   const uint8_t hitsThreshold_{};
 
-  Index* index_;
+  const Index& index_;
 
   mutable util::PercentileStats hitsOnReinsertionEstimator_{
       Index::kQuantileWindowSize};

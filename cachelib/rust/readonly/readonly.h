@@ -14,41 +14,30 @@
  * limitations under the License.
  */
 
-#include <folly/Random.h>
-#include <gtest/gtest.h>
+#pragma once
 
-#include <thread>
+#include <cstdint>
+#include <memory>
+#include <string>
 
-#include "cachelib/common/Time.h"
-
-using facebook::cachelib::util::Timer;
+#include "cachelib/allocator/ReadOnlySharedCacheView.h"
 
 namespace facebook {
+namespace rust {
 namespace cachelib {
-namespace tests {
 
-TEST(Util, TimerTest) {
-  {
-    auto rnd = folly::Random::rand32(100, 2000);
+std::unique_ptr<facebook::cachelib::ReadOnlySharedCacheView>
+ro_cache_view_attach(const std::string& cache_dir);
 
-    Timer timer;
-    timer.startOrResume();
-    /* sleep override */
-    std::this_thread::sleep_for(std::chrono::milliseconds(rnd));
-    timer.pause();
+std::unique_ptr<facebook::cachelib::ReadOnlySharedCacheView>
+ro_cache_view_attach_at_address(const std::string& cache_dir, size_t);
 
-    ASSERT_EQ(timer.getDurationMs(), rnd);
-    ASSERT_EQ(timer.getDurationSec(), rnd / 1000);
+uintptr_t ro_cache_view_get_shm_mapping_address(
+    const facebook::cachelib::ReadOnlySharedCacheView& cache);
 
-    {
-      auto t = timer.scopedStartOrResume();
-      /* sleep override */
-      std::this_thread::sleep_for(std::chrono::milliseconds(rnd));
-    }
-    ASSERT_EQ(timer.getDurationMs(), rnd * 2);
-  }
-}
-
-} // namespace tests
+const uint8_t* ro_cache_view_get_item_ptr_from_offset(
+    const facebook::cachelib::ReadOnlySharedCacheView& cacheView,
+    size_t offset);
 } // namespace cachelib
+} // namespace rust
 } // namespace facebook
