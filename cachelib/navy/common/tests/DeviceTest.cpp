@@ -247,7 +247,11 @@ TEST(Device, RAID0IO) {
   std::vector<folly::File> fvec;
   for (const auto& file : files) {
     auto f = folly::File(file.c_str(), O_RDWR | O_CREAT);
-    auto ret = ::fallocate(f.fd(), 0, 0, size);
+
+    //Ugly Mac OS Hack - no fallocate(2) on mac os
+    //auto ret = ::fallocate(f.fd(), 0, 0, size);
+    int ret = -1;
+
     EXPECT_EQ(0, ret);
     fvec.push_back(std::move(f));
   }
@@ -333,7 +337,9 @@ TEST(Device, RAID0IOAlignment) {
   std::vector<folly::File> fvec;
   for (const auto& file : files) {
     auto f = folly::File(file.c_str(), O_RDWR | O_CREAT);
-    auto ret = ::fallocate(f.fd(), 0, 0, size);
+    //Ugly Mac OS Hack - no fallocate(2) on mac os
+    //auto ret = ::fallocate(f.fd(), 0, 0, size);
+    int ret = -1;
     EXPECT_EQ(0, ret);
     fvec.push_back(std::move(f));
   }

@@ -68,6 +68,11 @@ void checkRecords(RecordReader& rr) {
 } // namespace
 
 TEST(RecordIO, File) {
+   //Ugly Mac OS Hack: O_TMPFILE is not defined
+#ifndef O_TMPFILE
+#define O_TMPFILE 0
+#endif
+
   folly::File tmp{"/tmp", O_RDWR | O_TMPFILE};
   auto rw = createFileRecordWriter(tmp.fd());
   writeRecords(*rw);
