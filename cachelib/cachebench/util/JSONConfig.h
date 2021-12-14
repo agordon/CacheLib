@@ -39,6 +39,11 @@ struct JSONConfig {
     field = val.asInt();
   }
 
+  //Ugly Mac OS Hack
+  static void setValImpl(size_t& field, const folly::dynamic& val) {
+    field = val.asInt();
+  }
+
   static void setValImpl(uint64_t& field, const folly::dynamic& val) {
     field = val.asInt();
   }
