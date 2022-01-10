@@ -205,7 +205,11 @@ size_t getNumResidentPages(const void* memory, size_t len) {
 
   // TODO this could be a large allocation. may be break it up if it matters.
   std::vector<unsigned char> vec(numPages, 0);
-  const int rv = mincore(const_cast<void*>(memory), len, vec.data());
+  const int rv = mincore(const_cast<void*>(memory), len,
+#ifdef MINCORE_USE_CHAR
+                         (char*)
+#endif
+                         vec.data());
   if (rv != 0) {
     throw std::system_error(
         errno, std::system_category(),

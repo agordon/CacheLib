@@ -34,6 +34,18 @@ add_library (cachelib_common
 )
 add_dependencies(cachelib_common thrift_generated_files)
 
+
+## The mincore(2) syscall used in Utils.cpp has different signature
+## in Linux (3rd param = unsigned char) and in FreeBSD/MacOS (char).
+if(CMAKE_SYSTEM_NAME STREQUAL Darwin OR
+   CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
+  target_compile_definitions(cachelib_common PRIVATE MINCORE_USE_CHAR)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  target_compile_definitions(cachelib_common PRIVATE MINCORE_USE_UNSIGNED_CHAR)
+else()
+  # Not supported at the moment
+endif()
+
 target_link_libraries(cachelib_common PUBLIC
   Threads::Threads
   FBThrift::thriftcpp2
