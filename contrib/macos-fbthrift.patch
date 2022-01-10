@@ -1,0 +1,45 @@
+diff --git a/thrift/compiler/CMakeLists.txt b/thrift/compiler/CMakeLists.txt
+index 3ef53427b..1f48484c5 100644
+--- a/thrift/compiler/CMakeLists.txt
++++ b/thrift/compiler/CMakeLists.txt
+@@ -90,6 +90,7 @@ endif()
+ target_link_libraries(
+   compiler_base
+ 
++  compiler_lib
+   compiler_ast
+   ${Boost_LIBRARIES}
+ )
+diff --git a/thrift/lib/cpp/CMakeLists.txt b/thrift/lib/cpp/CMakeLists.txt
+index c98dd4455..9079a9d84 100644
+--- a/thrift/lib/cpp/CMakeLists.txt
++++ b/thrift/lib/cpp/CMakeLists.txt
+@@ -75,7 +75,7 @@ target_link_libraries(
+     thrift-core
+     rpcmetadata
+     Folly::folly
+-    ZLIB::ZLIB
++    ${ZLIB_LIBRARIES}
+     ${OPENSSL_LIBRARIES}
+     ${ZSTD_LIBRARIES}
+ )
+diff --git a/thrift/lib/cpp2/CMakeLists.txt b/thrift/lib/cpp2/CMakeLists.txt
+index bb82928c1..798a90a4f 100644
+--- a/thrift/lib/cpp2/CMakeLists.txt
++++ b/thrift/lib/cpp2/CMakeLists.txt
+@@ -39,6 +39,7 @@ add_library(
+   protocol/CompactProtocol.cpp # can't link against thriftprotocol, dep cycle
+   ../cpp/protocol/TProtocolException.cpp
+   ../cpp/util/VarintUtils.cpp
++  ../cpp2/FieldRef.cpp
+ )
+ add_dependencies(thriftmetadata metadata-cpp2-target)
+ target_link_libraries(
+@@ -79,6 +80,7 @@ add_library(
+   ../cpp/protocol/TJSONProtocol.cpp
+   ../cpp/protocol/TProtocolException.cpp
+   ../cpp/util/VarintUtils.cpp
++  ../cpp2/FieldRef.cpp
+ )
+ add_dependencies(rpcmetadata RpcMetadata-cpp2-target)
+ target_link_libraries(
