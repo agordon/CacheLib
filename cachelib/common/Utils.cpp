@@ -15,7 +15,9 @@
  */
 
 #include <dirent.h>
+#ifndef FOLLY_WITHOUT_TRACER
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
+#endif
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/shm.h>
@@ -424,10 +426,15 @@ size_t getMemAvailable() {
 }
 
 void printExceptionStackTraces() {
+#ifdef FOLLY_WITHOUT_TRACER
+ std::cerr << "WARNING: Exception stack-tracing not available "
+              "on this platform" << std::endl;
+#else
   auto exceptions = folly::exception_tracer::getCurrentExceptions();
   for (auto& exc : exceptions) {
     std::cerr << exc << std::endl;
   }
+#endif
 }
 
 } // namespace util
