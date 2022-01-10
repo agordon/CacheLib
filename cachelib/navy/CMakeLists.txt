@@ -42,6 +42,12 @@ add_library (cachelib_navy
   )
 add_dependencies(cachelib_navy thrift_generated_files)
 
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+else()
+  target_compile_definitions(cachelib_navy PRIVATE MISSING_FALLOCATE)
+  target_compile_definitions(cachelib_navy PRIVATE MISSING_FADVISE)
+endif()
+
 target_link_libraries(cachelib_navy PUBLIC
   cachelib_common
   )
