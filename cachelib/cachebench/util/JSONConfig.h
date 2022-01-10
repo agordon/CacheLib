@@ -43,6 +43,14 @@ struct JSONConfig {
     field = val.asInt();
   }
 
+  //See here: https://techoverflow.net/2019/06/13/stdenable_if-and-stdis_same-minimal-example/
+  //and https://eli.thegreenplace.net/2014/sfinae-and-enable_if/
+  //TODO: use std::is_integral<T> to merge uint32/uint64/size_t etc.
+  template<class T = uint64_t, typename std::enable_if<std::negation<std::is_same<size_t, T>>::value,void*>::type = nullptr>
+  static void setValImpl(size_t& field, const folly::dynamic& val) {
+    field = val.asInt();
+  }
+
   static void setValImpl(double& field, const folly::dynamic& val) {
     field = val.asDouble();
   }
