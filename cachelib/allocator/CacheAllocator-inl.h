@@ -3447,7 +3447,7 @@ bool CacheAllocator<CacheTrait>::cleanupStrayShmSegments(
 }
 
 template <typename CacheTrait>
-uintptr_t CacheAllocator<CacheTrait>::getItemPtrAsOffset(const void* ptr) {
+uint64_t CacheAllocator<CacheTrait>::getItemPtrAsOffset(const void* ptr) {
   // if this succeeeds, the address is valid within the cache.
   allocator_->getAllocInfo(ptr);
 
@@ -3457,8 +3457,8 @@ uintptr_t CacheAllocator<CacheTrait>::getItemPtrAsOffset(const void* ptr) {
 
   const auto& shm = shmManager_->getShmByName(detail::kShmCacheName);
 
-  return reinterpret_cast<uintptr_t>(ptr) -
-         reinterpret_cast<uintptr_t>(shm.getCurrentMapping().addr);
+  return reinterpret_cast<uint64_t>(ptr) -
+         reinterpret_cast<uint64_t>(shm.getCurrentMapping().addr);
 }
 
 template <typename CacheTrait>
