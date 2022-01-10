@@ -40,10 +40,15 @@ target_link_libraries(cachelib_common PUBLIC
   FBThrift::thriftprotocol
   Folly::folly
   Folly::follybenchmark
-  Folly::folly_exception_tracer
-  Folly::folly_exception_tracer_base
-  Folly::folly_exception_counter
 )
+
+IF (FOLLY_WITH_TRACER)
+  target_link_libraries(cachelib_common PUBLIC
+    Folly::folly_exception_tracer
+    Folly::folly_exception_tracer_base
+    Folly::folly_exception_counter
+  )
+endif()
 
 install(TARGETS cachelib_common
         EXPORT cachelib-exports

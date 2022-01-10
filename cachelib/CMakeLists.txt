@@ -102,6 +102,17 @@ find_package(Zlib REQUIRED)
 find_package(Zstd REQUIRED)
 find_package(FBThrift REQUIRED) # must come after wangle
 
+# On some platforms (Mac OS, FreeBSD, Alpine Linux)
+# Folly does not find the required dependencies to build with stack-tracing
+# features.
+# Detect that, and avoid using it.
+if(TARGET Folly::folly_exception_tracer)
+  SET(FOLLY_WITH_TRACER TRUE)
+else ()
+  SET(FOLLY_WITH_TRACER FALSE)
+endif()
+
+message(STATUS "FOLLY_WITH_TRACER: ${FOLLY_WITH_TRACER}")
 
 # FBThrift - generates h/cpp files from .*thrift files
 find_program(FBTHRIFT1 thrift1
