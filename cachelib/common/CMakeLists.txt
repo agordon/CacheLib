@@ -60,6 +60,8 @@ IF (FOLLY_WITH_TRACER)
     Folly::folly_exception_tracer_base
     Folly::folly_exception_counter
   )
+else()
+  target_compile_definitions(cachelib_common PRIVATE FOLLY_WITHOUT_TRACER)
 endif()
 
 install(TARGETS cachelib_common
