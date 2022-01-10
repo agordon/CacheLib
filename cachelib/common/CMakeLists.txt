@@ -64,6 +64,16 @@ else()
   target_compile_definitions(cachelib_common PRIVATE FOLLY_WITHOUT_TRACER)
 endif()
 
+
+include(CheckSymbolExists)
+check_symbol_exists(PTHREAD_MUTEX_TIMED_NP "pthread.h" HAVE_PTHREAD_NP)
+if (HAVE_PTHREAD_NP)
+else()
+  target_compile_definitions(cachelib_common PUBLIC SKIP_PTHREAD_NP)
+endif()
+
+
+
 install(TARGETS cachelib_common
         EXPORT cachelib-exports
         DESTINATION ${LIB_INSTALL_DIR} )
@@ -97,7 +107,9 @@ if (BUILD_TESTS)
   add_test (tests/EventInterfaceTest.cpp cachelib_allocator)
   add_test (tests/HashTests.cpp)
   add_test (tests/IteratorsTests.cpp)
-  add_test (tests/MutexTests.cpp)
+  if (HAVE_PTHREAD_NP)
+    add_test (tests/MutexTests.cpp)
+  endif()
   add_test (tests/PeriodicWorkerTest.cpp)
   add_test (tests/SerializationTest.cpp cachelib_allocator)
   add_test (tests/UtilTests.cpp)
