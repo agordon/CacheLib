@@ -20,6 +20,11 @@
 
 #include "cachelib/navy/serialization/RecordIO.h"
 
+/* Missing open(2) flag on MacOS */
+#ifndef O_TMPFILE
+#define O_TMPFILE 0
+#endif
+
 namespace facebook {
 namespace cachelib {
 namespace navy {
