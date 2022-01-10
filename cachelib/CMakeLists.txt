@@ -54,14 +54,19 @@ set(CMAKE_INSTALL_DIR lib/cmake/cachelib CACHE STRING
 set(CONFIGS_INSTALL_DIR test_configs CACHE STRING
     "The subdirectory where sample test configurations should be installed")
 
-# When installing the library (and dependencies like folly) in a non-default
-# prefix, this will let projects linking against *.so to find libfolly.so
-# automatically.
-#set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
-##https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/../lib64:$ORIGIN/../lib-os")
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+if (CMAKE_SYSTEM_NAME STREQUAL Linux)
+  # When installing the library (and dependencies like folly) in a non-default
+  # prefix, this will let projects linking against *.so to find libfolly.so
+  # automatically.
+  #set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
+  ##https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
+  set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/../lib64:$ORIGIN/../lib-os")
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+elseif (CMAKE_SYSTEM_NAME STREQUAL Darwin)
+  set(CMAKE_MACOSX_RPATH TRUE)
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
 
 set(CACHELIB_HOME ${CMAKE_CURRENT_SOURCE_DIR})
 set(CACHELIB_BUILD ${CMAKE_CURRENT_BINARY_DIR})
