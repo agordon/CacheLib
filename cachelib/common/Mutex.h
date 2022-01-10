@@ -34,6 +34,7 @@ namespace cachelib {
 
 namespace detail {
 
+#ifdef PTHREAD_MUTEX_TIMED_NP
 template <int MutexType = PTHREAD_MUTEX_TIMED_NP>
 class PThreadMutexImpl {
  public:
@@ -115,7 +116,10 @@ class PThreadMutexImpl {
  private:
   std::unique_ptr<pthread_mutex_t> mutex_;
 };
+#endif /* PTHREAD_MUTEX_TIMED_NP */
 
+
+#ifdef PTHREAD_MUTEX_ADAPTIVE_NP
 // This looks very hacky/clowny, but is what memcached today uses in
 // production for its LRU mutex. Seems to work very well for CI like workloads
 // where all we do is LRU udpates and very few inserts/evictions.
@@ -218,6 +222,7 @@ class PThreadSpinLock {
  private:
   std::unique_ptr<pthread_spinlock_t> spinLock_;
 };
+#endif /* PTHREAD_MUTEX_ADAPTIVE_NP */
 
 // a lock that provides a read and write holder, but both are exclusive. this
 // is used to provide the same API to chained hash table so that we dont have
@@ -237,11 +242,14 @@ struct RWMockLock {
 
 } // namespace detail
 
+#ifdef PTHREAD_MUTEX_ADAPTIVE_NP
 using PThreadAdaptiveMutex =
     detail::PThreadMutexImpl<PTHREAD_MUTEX_ADAPTIVE_NP>;
 using PThreadMutex = detail::PThreadMutexImpl<>;
 using PThreadSpinMutex = detail::PThreadSpinMutexImpl<1024>;
 using PThreadSpinLock = detail::PThreadSpinLock;
+#endif /* PTHREAD_MUTEX_ADAPTIVE_NP */
+
 using RWMockLock = detail::RWMockLock;
 
 template <typename T>
