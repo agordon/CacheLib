@@ -81,6 +81,11 @@ jobs:
     # Docker container image name
     container: "centos:8.1.1911"
     steps:
+      - name: "patch CentOS Sources location"
+        run: |
+          cd /etc/yum.repos.d/
+          sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+          sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
       - name: "update packages"
         # stock centos has a problem with CMAKE, fails with:
         #  "cmake: symbol lookup error: cmake: undefined symbol: archive_write_add_filter_zstd"
