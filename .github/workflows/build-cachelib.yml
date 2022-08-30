@@ -91,6 +91,11 @@ jobs:
         #  "cmake: symbol lookup error: cmake: undefined symbol: archive_write_add_filter_zstd"
         # updating solves it
         run: dnf update -y
+      - name: "patch CentOS Sources location (again...)"
+        run: |
+          cd /etc/yum.repos.d/
+          sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+          sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
       - name: "install sudo,git"
         run: dnf install -y sudo git cmake gcc
       - name: "System Information"
