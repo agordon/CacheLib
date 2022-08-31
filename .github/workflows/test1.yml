@@ -3,13 +3,18 @@ on:
 
 jobs:
   first-job:
+    uses: actions/checkout@v3
+
+  sysinfo-job:
+    needs: first-job
+    uses: ./.github/workflows/system-info.yml
+
+  main-job:
     name: "Test of First Job"
+    needs: [first-job, sysinfo-job]
     runs-on: ubuntu-latest
     steps:
       - name: "uname"
         run: uname -a
-      - name: "checkout sources"
-        uses: actions/checkout@v3
-      - uses: ./.github/workflows/system-info
       - name: "info"
         run: "pwd && ls -lA ; ls -lR .github"
