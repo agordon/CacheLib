@@ -18,8 +18,11 @@
 # use CRB (CodeBuild Ready).
 # see: https://wiki.rockylinux.org/rocky/repo/
 
-sudo dnf config-manager --set-enabled crb
+sudo dnf update -y
+sudo dnf install dnf-plugins-core
 sudo dnf install -y epel-release
+sudo dnf config-manager --set-enabled crb
+
 sudo dnf groupinstall -y "Development Tools"
 sudo dnf install -y \
   libtool bison flex cmake \
