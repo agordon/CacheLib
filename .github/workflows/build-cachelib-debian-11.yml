@@ -1,8 +1,8 @@
 name: build-cachelib-debian-11
 on:
-#  push:
-  schedule:
-     - cron:  '30 5 * * 2,6'
+  push:
+#  schedule:
+#     - cron:  '30 5 * * 2,6'
 jobs:
   build-cachelib-debian-11:
     name: "Debian-11 (Bullseye) - Build CacheLib with all dependencies"
