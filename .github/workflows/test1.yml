@@ -2,11 +2,10 @@ on:
   push:
 
 jobs:
-  zero-job:
-    uses: ./.github/workflows/system-info.yml
   first-job:
     name: "Test of First Job"
     runs-on: ubuntu-latest
+    uses: ./.github/workflows/system-info.yml
     steps:
       - name: "uname"
         run: uname -a
