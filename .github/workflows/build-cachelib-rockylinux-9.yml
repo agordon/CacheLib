@@ -27,8 +27,6 @@ jobs:
           uname -a
           echo === /etc/os-release ===
           cat /etc/os-release
-          echo === /etc/centos-release ===
-          cat /etc/centos-release
           echo === df -hl ===
           df -hl
           echo === nproc ===
