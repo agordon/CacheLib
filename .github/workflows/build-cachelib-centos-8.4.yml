@@ -1,80 +1,14 @@
-# NOTES:
-# 1. While Github-Actions enables cache of dependencies,
-#    Facebook's projects (folly,fizz,wangle,fbthrift)
-#    are fast-moving targets - so we always checkout the latest version
-#    (as opposed to using gitactions cache, which is recommended in the
-#    documentation).
-#
-# 2. Using docker containers to build on CentOS and Debian,
-#    Specifically CentOS v8.1.1911 as that
-#    version is closest to Facebook's internal dev machines.
-#
-# 3. When using docker containers we install 'sudo',
-#    as the docker images are typically very minimal and without
-#    'sudo', while the ./contrib/ scripts use sudo.
-#
-# 4. When using the docker containers we install 'git'
-#    BEFORE getting the CacheLib source code (with the 'checkout' action).
-#    Otherwise, the 'checkout@v2' action script falls back to downloading
-#    the git repository files only, without the ".git" directory.
-#    We need the ".git" directory to updating the git-submodules
-#    (folly/wangle/fizz/fbthrift). See:
-#    https://github.com/actions/checkout/issues/126#issuecomment-570288731
-#
-# 5. To reduce less-critical (and yet frequent) rebuilds, the jobs
-#    check the author of the commit, and SKIP the build if
-#    the author is "svcscm". These commits are automatic updates
-#    for the folly/fbthrift git-submodules, and can happen several times a day.
-#    While there is a possiblity that updating the git-submodules breaks
-#    CacheLib, it is less likely, and will be detected once an actual
-#    code change commit triggers a full build.
-#    e.g. https://github.com/facebookincubator/CacheLib/commit/9372a82190dd71a6e2bcb668828cfed9d1bd25c1
-#
-# 6. The 'if' condition checking the author name of the commit (see #5 above)
-#    uses github actions metadata variable:
-#        'github.event.head_commit.author.name'
-#    GitHub have changed in the past the metadata structure and broke
-#    such conditions. If you need to debug the metadata values,
-#    see the "dummy-show-github-event" job below.
-#    E.g. https://github.blog/changelog/2019-10-16-changes-in-github-actions-push-event-payload/
-#    As of Jan-2021, the output is:
-#     {
-#       "author": {
-#          "email": "mimi@moo.moo",
-#          "name": "mimi"
-#       },
-#       "committer": {
-#         "email": "assafgordon@gmail.com",
-#         "name": "Assaf Gordon",
-#         "username": "agordon"
-#        },
-#       "distinct": true,
-#       "id": "6c3aab0970f4a07cc2af7658756a6ef9d82f3276",
-#       "message": "gitactions: test",
-#       "timestamp": "2021-01-26T11:11:57-07:00",
-#       "tree_id": "741cd1cb802df84362a51e5d01f28788845d08b7",
-#       "url": "https://github.com/agordon/CacheLib/commit/6c3aab0970f4a07cc2af7658756a6ef9d82f3276"
-#     }
-#
-# 7. When checking the commit's author name, we use '...author.name',
-#    NOT '...author.username' - because the 'svcscm' author does not
-#    have a github username (see the 'mimi' example above).
-#
-
-name: build-cachelib-centos-8-1
+name: build-cachelib-centos-8.4
 on:
-#  push:
-  schedule:
-     - cron:  '30 5 * * 2,6'
+   push:
+#  schedule:
+#     - cron:  '30 5 * * 1,4'
 jobs:
-
-
-  build-cachelib-centos8-1-1911:
-    #if: "!contains(github.event.head_commit.author.name, 'svcscm')"
-    name: "CentOS/8.1.1911 - Build CacheLib with all dependencies"
+  build-cachelib-centos8-latest:
+    name: "CentOS/8.4 - Build CacheLib with all dependencies"
     runs-on: ubuntu-latest
     # Docker container image name
-    container: "centos:8.1.1911"
+    container: "centos:latest"
     steps:
       - name: "Show Head Commit"
         env:
@@ -113,10 +47,10 @@ jobs:
           cat /etc/centos-release
           echo === df -hl ===
           df -hl
-          echo === free -h ===
-          free -h
           echo === nproc ===
           nproc || true
+          echo === free -h ===
+          free -h
           echo === top ===
           top -b -n1 -1 -Eg || timeout 1 top -b -n1
           echo === env ===
