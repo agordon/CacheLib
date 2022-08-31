@@ -8,7 +8,7 @@ jobs:
     steps:
       - name: "Show GitHub Action event.head_commit variable"
         env:
-          CONTENT: ${{ toJSON(github.event.head_commit) }}
+          CONTENT: "${{ toJSON(github.event.head_commit) }}"
         run: echo "$CONTENT"
       - name: "System Information"
         run: |
