@@ -1,8 +1,8 @@
 name: build-cachelib-ubuntu-20
 on:
-  push:
-#  schedule:
-#    - cron:  '30 5 * * 0,3'
+#  push:
+  schedule:
+    - cron:  '30 5 * * 0,3'
 jobs:
   build-cachelib-ubuntu-20:
     name: "Ubuntu-20 - Build CacheLib with all dependencies"

@@ -1,8 +1,8 @@
 name: build-cachelib-ubuntu-22
 on:
-  push:
-#  schedule:
-#    - cron:  '30 5 * * 0,3'
+#  push:
+  schedule:
+    - cron:  '30 5 * * 0,3'
 jobs:
   build-cachelib-ubuntu-22:
     name: "Ubuntu-22 - Build CacheLib with all dependencies"
