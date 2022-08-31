@@ -3,7 +3,8 @@ on:
 
 jobs:
   first-job:
-    uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v3
 
   sysinfo-job:
     needs: first-job
