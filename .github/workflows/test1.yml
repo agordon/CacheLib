@@ -8,5 +8,7 @@ jobs:
     steps:
       - name: "uname"
         run: uname -a
+      - name: "checkout sources"
+        uses: actions/checkout@v3
       - name: "System Info"
-        uses: ./.github/workflows/system-info.yml@main
+        uses: ./.github/workflows/system-info.yml
