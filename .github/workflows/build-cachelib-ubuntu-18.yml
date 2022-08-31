@@ -24,7 +24,7 @@ jobs:
           apt-add-repository "deb http://security.ubuntu.com/ubuntu bionic-security main universe restricted"
           apt-get upgrade -y
           apt-get install -y openssl
-          apt-get install -y sudo git procps
+          apt-get install -y sudo git procps wget curl
       - name: "update CMake package"
         run: |
           wget https://apt.kitware.com/keys/kitware-archive-latest.asc
