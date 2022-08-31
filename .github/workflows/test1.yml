@@ -14,9 +14,3 @@ jobs:
         uses: actions/checkout@v3
       - name: "info"
         run: "pwd && ls -lA ; ls -lR .github"
-  second-job:
-    name: foo
-    steps:
-      - name: "more info"
-        run: "date && pwd && ls -lA ; ls -lR .github"
-
