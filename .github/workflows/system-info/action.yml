@@ -6,10 +6,10 @@ jobs:
   system-info:
     name: "System Information"
     steps:
-      - name: "Show GitHub Action event.head_commit variable"
-        env:
-          CONTENT: "${{ toJSON(github.event.head_commit) }}"
-        run: echo "$CONTENT"
+      #- name: "Show GitHub Action event.head_commit variable"
+      #  env:
+      #    CONTENT: "${{ toJSON(github.event.head_commit) }}"
+      #  run: echo "$CONTENT"
       - name: "System Information"
         run: |
           echo === uname ===
