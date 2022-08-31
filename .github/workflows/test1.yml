@@ -13,4 +13,4 @@ jobs:
       - name: "info"
         run: "pwd && ls -lA ; ls -lR .github"
       - name: "System Info"
-        uses: ./.github/workflows/system-info.yml@v0
+        uses: ./.github/workflows/system-info
