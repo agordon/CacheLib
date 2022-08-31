@@ -61,20 +61,12 @@
 #    have a github username (see the 'mimi' example above).
 #
 
-name: build-cachelib
+name: build-cachelib-centos-8-1
 on:
-  schedule:
-     - cron:  '30 5 * * 2,6'
+  push:
+#  schedule:
+#     - cron:  '30 5 * * 2,6'
 jobs:
-  dummy-show-github-event:
-    name: "Show GitHub Action event.head_commit variable"
-    runs-on: ubuntu-latest
-    steps:
-      - name: "GitHub Variable Content"
-        env:
-          CONTENT: "${{ toJSON(github.event.head_commit) }}"
-          #CONTENT: ${{ toJSON(github.event.head_commit) }}
-        run: echo "$CONTENT"
 
 
   build-cachelib-centos8-1-1911:
@@ -84,7 +76,15 @@ jobs:
     # Docker container image name
     container: "centos:8.1.1911"
     steps:
-      - name: "patch CentOS Sources location"
+      - name: "Show Head Commit"
+        env:
+          CONTENT: ${{ toJSON(github.event.head_commit) }}
+        run: echo "$CONTENT"
+      - name: "patch CentOS Sources location (1st time)"
+        # CentOS 8.2 and later was changed into "CentOS Stream".
+        # Around the same time, CentOS 8.1 became EOL (End-Of-Life),
+        # And the repositories were moved to the legacy "vault.centos.org" URL.
+        # Patch the yum config file to this new location.
         run: |
           cd /etc/yum.repos.d/
           sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
@@ -95,6 +95,8 @@ jobs:
         # updating solves it
         run: dnf update -y
       - name: "patch CentOS Sources location (again...)"
+        # The "dnf update -y" above overwrites the yum configuration files,
+        # patch them again to point to the vault URLs.
         run: |
           cd /etc/yum.repos.d/
           sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
@@ -111,6 +113,8 @@ jobs:
           df -hl
           echo === free -h ===
           free -h
+          echo === nproc ===
+          nproc || true
           echo === top ===
           top -b -n1 -1 -Eg || timeout 1 top -b -n1
           echo === env ===
@@ -119,33 +123,8 @@ jobs:
           gcc -v
       - name: "checkout sources"
         uses: actions/checkout@v2
-      - name: "Install Prerequisites"
-        run: ./contrib/build.sh -S -B
-      - name: "Test: update-submodules"
-        run: ./contrib/update-submodules.sh
-      - name: "Install dependency: zstd"
-        run: ./contrib/build-package.sh -j -v -i zstd
-      - name: "Install dependency: googleflags"
-        run: ./contrib/build-package.sh -j -v -i googleflags
-      - name: "Install dependency: googlelog"
-        run: ./contrib/build-package.sh -j -v -i googlelog
-      - name: "Install dependency: googletest"
-        run: ./contrib/build-package.sh -j -v -i googletest
-      - name: "Install dependency: sparsemap"
-        run: ./contrib/build-package.sh -j -v -i sparsemap
-      - name: "Install dependency: fmt"
-        run: ./contrib/build-package.sh -j -v -i fmt
-      - name: "Install dependency: folly"
-        run: ./contrib/build-package.sh -j -v -i folly
-      - name: "Install dependency: fizz"
-        run: ./contrib/build-package.sh -j -v -i fizz
-      - name: "Install dependency: wangle"
-        run: ./contrib/build-package.sh -j -v -i wangle
-      - name: "Install dependency: fbthrift"
-        run: ./contrib/build-package.sh -j -v -i fbthrift
-      - name: "build CacheLib"
-        # Build cachelib in debug mode (-d) and with all tests (-t)
-        run: ./contrib/build-package.sh -j -v -i -d -t cachelib
+      - name: "Build CacheLib (and all dependencies)"
+        run: ./contrib/build.sh -T -j
       - uses: actions/upload-artifact@v2
         if: failure()
         with:
