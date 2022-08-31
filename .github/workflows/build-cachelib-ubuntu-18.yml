@@ -21,10 +21,11 @@ jobs:
         run: |
           apt-get update
           apt-get install -y software-properties-common
-          apt-add-repository "deb http://security.ubuntu.com/ubuntu bionic-security main universe restricted"
+          #apt-add-repository "deb http://security.ubuntu.com/ubuntu bionic-security main universe restricted"
           apt-get upgrade -y
           apt-get install -y openssl
           apt-get install -y sudo git procps wget curl
+          apt-get install -y build-essential
       - name: "update CMake package"
         run: |
           wget https://apt.kitware.com/keys/kitware-archive-latest.asc
