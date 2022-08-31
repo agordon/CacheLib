@@ -1,39 +1,21 @@
-# NOTE:
-# The native Ubuntu-18 github runner is being deprecated
-# (https://github.blog/changelog/2022-08-09-github-actions-the-ubuntu-18-04-actions-runner-image-is-being-deprecated-and-will-be-removed-by-12-1-22/)
-# Instead, use "ubuntu-latest" and run Ubuntu-18.04 inside a docker container.
-name: build-cachelib-ubuntu-18
+name: build-cachelib-debian-11
 on:
-#  push:
-  schedule:
-    - cron:  '30 5 * * 0,3'
+  push:
+#  schedule:
+#     - cron:  '30 5 * * 2,6'
 jobs:
-  build-cachelib-ubuntu-18:
-    name: "Ubuntu-18 - Build CacheLib with all dependencies"
+  build-cachelib-debian-11:
+    name: "Debian-11 (Bullseye) - Build CacheLib with all dependencies"
     runs-on: ubuntu-latest
-    container: "ubuntu:18.04"
+    # Docker container image name
+    container: "debian:bullseye-slim"
     steps:
-      - name: "Show Head Commit"
-        env:
-          CONTENT: ${{ toJSON(github.event.head_commit) }}
-        run: echo "$CONTENT"
-      - name: "update packages (1st time)"
-        run: |
-          apt-get update
-          apt-get install -y software-properties-common
-          #apt-add-repository "deb http://security.ubuntu.com/ubuntu bionic-security main universe restricted"
-          apt-get upgrade -y
-          apt-get install -y openssl
-          apt-get install -y sudo git procps wget curl
-          apt-get install -y build-essential
-      - name: "update CMake package"
-        run: |
-          wget https://apt.kitware.com/keys/kitware-archive-latest.asc
-          apt-key add kitware-archive-latest.asc
-          apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
-          apt-get update
-          apt-get install -y kitware-archive-keyring
-          apt-get install -y cmake
+      - name: "update packages"
+        run: apt-get update
+      - name: "upgrade packages"
+        run: apt-get -y upgrade
+      - name: "install sudo,git"
+        run: apt-get install -y sudo git procps build-essential
       - name: "System Information"
         run: |
           echo === uname ===
@@ -42,22 +24,20 @@ jobs:
           cat /etc/os-release
           echo === df -hl ===
           df -hl
-          echo === nproc ===
-          nproc || true
           echo === free -h ===
           free -h
+          echo === nproc ====
+          nproc || true
           echo === top ===
-          top -b -n1 -1 -Eg || timeout 1 top -b -n1
+          top -b -n1 -1 -Eg || timeout 1 top -b -n1 ; true
           echo === env ===
           env
           echo === cc -v ===
-          cc -v
+          cc -v || true
           echo === g++ -v ===
-          g++ -v
-      - name: "git: ignore unsafe-directories"
-        run: git config --global --add safe.directory '*'
+          g++ - || true
       - name: "checkout sources"
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: "Install Prerequisites"
         run: ./contrib/build.sh -S -B
       - name: "Test: update-submodules"
@@ -84,7 +64,7 @@ jobs:
         run: ./contrib/build-package.sh -j -v -i fbthrift
       - name: "build CacheLib"
         # Build cachelib in debug mode (-d) and with all tests (-t)
-        run: ./contrib/build-package.sh -j -v -i -t cachelib
+        run: ./contrib/build-package.sh -j -v -i -d -t cachelib
       - uses: actions/upload-artifact@v2
         if: failure()
         with:
@@ -96,3 +76,4 @@ jobs:
             build-cachelib/**/Makefile
           if-no-files-found: warn
           retention-days: 1
+
