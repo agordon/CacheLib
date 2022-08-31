@@ -1,7 +1,6 @@
 on:
   push:
-jobs:
- 
+
 jobs:
   first-job:
     name: "Test of First Job"
