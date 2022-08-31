@@ -1,0 +1,13 @@
+on:
+  push:
+jobs:
+ 
+jobs:
+  first-job:
+    name: "Test of First Job"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "uname"
+        run: uname -a
+      - name: "install sudo,git"
+        uses: ./.github/workflows/system-info.yml
