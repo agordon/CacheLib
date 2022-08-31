@@ -1,8 +1,8 @@
 name: build-cachelib-centos-latest
 on:
-   push:
-#  schedule:
-#     - cron:  '30 5 * * 1,4'
+#   push:
+  schedule:
+     - cron:  '30 5 * * 1,4'
 jobs:
   build-cachelib-centos8-latest:
     name: "CentOS/latest - Build CacheLib with all dependencies"
