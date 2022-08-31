@@ -72,7 +72,8 @@ jobs:
     steps:
       - name: "GitHub Variable Content"
         env:
-          CONTENT: ${{ toJSON(github.event.head_commit) }}
+          CONTENT: "${{ toJSON(github.event.head_commit) }}"
+          #CONTENT: ${{ toJSON(github.event.head_commit) }}
         run: echo "$CONTENT"
 
 
