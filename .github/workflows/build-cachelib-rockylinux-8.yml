@@ -20,7 +20,7 @@ jobs:
         # updating solves it
         run: dnf update -y
       - name: "install sudo,git"
-        run: dnf install -y sudo git cmake gcc
+        run: dnf install -y sudo git cmake gcc procps
       - name: "System Information"
         run: |
           echo === uname ===
