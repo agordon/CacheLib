@@ -2,6 +2,8 @@ on:
   push:
 
 jobs:
+  zero-job:
+    uses: ./.github/workflows/system-info/action.yml
   first-job:
     name: "Test of First Job"
     runs-on: ubuntu-latest
@@ -12,5 +14,3 @@ jobs:
         uses: actions/checkout@v3
       - name: "info"
         run: "pwd && ls -lA ; ls -lR .github"
-      - name: "System Info"
-        uses: ./.github/workflows/system-info/action.yml
