@@ -3,7 +3,7 @@ on:
   workflow_call:
 
 jobs:
-  cachelib-build-steps
+  cachelib-build-steps:
     steps:
       - name: "checkout sources"
         uses: actions/checkout@v2
