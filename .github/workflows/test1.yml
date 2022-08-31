@@ -11,6 +11,6 @@ jobs:
       - name: "checkout sources"
         uses: actions/checkout@v3
       - name: "info"
-        run: "pwd && ls -l"
+        run: "pwd && ls -lA ; ls -lR .github"
       - name: "System Info"
         uses: ./.github/workflows/system-info.yml@main
