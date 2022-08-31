@@ -5,11 +5,11 @@ jobs:
   first-job:
     name: "Test of First Job"
     runs-on: ubuntu-latest
-    uses: ./.github/workflows/system-info.yml
     steps:
       - name: "uname"
         run: uname -a
       - name: "checkout sources"
         uses: actions/checkout@v3
+      - uses: ./.github/workflows/system-info
       - name: "info"
         run: "pwd && ls -lA ; ls -lR .github"
