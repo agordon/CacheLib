@@ -58,7 +58,10 @@ jobs:
       - name: "Install dependency: fmt"
         run: ./contrib/build-package.sh -j -v -i fmt
       - name: "Install dependency: folly"
-        run: ./contrib/build-package.sh -j -v -i folly
+        run: |
+          # see: https://aur.archlinux.org/packages/folly#comment-862543
+          sed -i '$aset(LIBDWARF_INCLUDE_DIRS "/usr/include/libdwarf-0")' cachelib/external/folly/CMake/FindLibDwarf.cmake
+          ./contrib/build-package.sh -S -j -v -i folly
       - name: "Install dependency: fizz"
         run: ./contrib/build-package.sh -j -v -i fizz
       - name: "Install dependency: wangle"
